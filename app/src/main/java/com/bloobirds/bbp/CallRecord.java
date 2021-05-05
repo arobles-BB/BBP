@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Date;
 
+/**
+ * Bean to throw at the server
+ */
 public class CallRecord implements Serializable {
     private Date datetime;
     private String duration;

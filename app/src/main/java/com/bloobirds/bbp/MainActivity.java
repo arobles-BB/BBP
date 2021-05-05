@@ -33,6 +33,12 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * This class is both Activity and a Loader at the same time! (welcome to java multi inheritance)
+ * We are going to use Loaders (outdated since Android 9) for Backward compatibility.
+ * A Loader focuses in data like this one, will monitor changes for an specific data source
+ * Every Loader works on a separated Thread
+ */
 public class MainActivity extends Activity implements LoaderManager.LoaderCallbacks<Cursor> {
     private static final String TAG = "BBP - CallLog"; // ID to the log trace
     private static final int URL_LOADER = 1;
@@ -41,11 +47,18 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
     private TextView callLogsTextView; // main canvas to write down results
 
+    /**
+     * callback method called when the system needs the activity to be created.
+     * @param savedInstanceState
+     */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate()");
-        setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        // our view only wors in portrait
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        // set the view
         setContentView(R.layout.main);
         initialize();
     }
@@ -60,7 +73,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
         btnCallLog.setOnClickListener(v -> {
             Log.d(TAG, "initialize() >> initialize loader");
-            getLoaderManager().initLoader(URL_LOADER, null, MainActivity.this);
+            getLoaderManager().initLoader(URL_LOADER, null, MainActivity.this); // onCreate will be called if the button is pressed
         });
 
         callLogsTextView = (TextView) findViewById(R.id.call_logs);
@@ -70,27 +83,44 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         if (prLog == PackageManager.PERMISSION_DENIED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_CALL_LOG}, URL_LOADER);
 
+        // One of the multiple ways of sharing info between Loaders
         SharedPreferences sp = getSharedPreferences(MY_PREFS_NAME, Context.MODE_PRIVATE);
+        // If we never had a token, ask for one
         if (!sp.contains(MY_TOKEN)) login(sp);
         
     }
 
+    /**
+     * Internal method to open a valid session with the server
+     * TODO: really open the session
+     * TODO: show the dialog for user/pass (finish MyLoginView.java and registration.xml)
+     * @param sp
+     */
     private void login(SharedPreferences sp) {
         SharedPreferences.Editor editor = sp.edit();
         editor.remove(MY_TOKEN);
-        
+
+        // If you don't have the user/pass do some new input View
+        // Do some login logic
         String bb_token ="";
         String bb_user="";
 
-
+        // Once you have the token, store it for future uses
         editor.putString(MY_TOKEN, bb_token);
     }
 
+    /**
+     * callback method called when the system needs the loader to be created.
+     * @param loaderID
+     * @param args
+     * @return
+     */
     @Override
     public Loader<Cursor> onCreateLoader(int loaderID, Bundle args) {
         Log.d(TAG, "onCreateLoader() >> loaderID : " + loaderID);
 
         switch (loaderID) {
+            // we could be implementing multiple Cursors in the same class, we need to identify which one
             case URL_LOADER:
                 // Returns a new CursorLoader
                 return new CursorLoader(
@@ -107,6 +137,11 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
     }
 
+    /**
+     * Called once the Cursor has been fully loaded
+     * @param loader
+     * @param managedCursor
+     */
     @RequiresApi(api = Build.VERSION_CODES.N) // That's because the "sort predicates". If you take them out, you may take this as well
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor managedCursor) {
@@ -141,7 +176,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                 case CallLog.Calls.MISSED_TYPE:
                     dir = "Missed";
                     break;
-                default:
+                default: // we omit other call types...
                     dir = "Other";
                     break;
             }
@@ -183,6 +218,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
             }
         }
 
+        // StringBuffer will be rendered as HTML
         sb.append("<BR>Total outbound: "+resultOut.size());
         sb.append("<BR>Total inbound: "+resultIn.size());
         sb.append("<BR>Total missed: "+resultMiss.size());
@@ -195,6 +231,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         Log.d(TAG, "onLoaderReset()");
-        // do nothing
+        // we need to do nothing right now
+        // probably check if the token still valid
     }
 }
