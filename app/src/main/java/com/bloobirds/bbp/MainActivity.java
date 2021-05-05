@@ -3,8 +3,10 @@ package com.bloobirds.bbp;
 import android.Manifest;
 import android.app.Activity;
 import android.app.LoaderManager;
+import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -32,10 +34,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class MainActivity extends Activity implements LoaderManager.LoaderCallbacks<Cursor> {
-    private static final String TAG = "BBP - CallLog"; // tag para los logs
+    private static final String TAG = "BBP - CallLog"; // ID to the log trace
     private static final int URL_LOADER = 1;
+    private static final String MY_PREFS_NAME = "BBprefs";
+    private static final String MY_TOKEN = "BB.TOKEN";
 
-    private TextView callLogsTextView; // View para los textos
+    private TextView callLogsTextView; // main canvas to write down results
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -46,14 +50,16 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         initialize();
     }
 
-
+    /**
+     * Internal method to initialize view, permissions and session with the server
+     */
     private void initialize() {
         Log.d(TAG, "initialize()");
 
         Button btnCallLog = (Button) findViewById(R.id.btn_call_log);
 
         btnCallLog.setOnClickListener(v -> {
-            Log.d(TAG, "initialize() >> initialise loader");
+            Log.d(TAG, "initialize() >> initialize loader");
             getLoaderManager().initLoader(URL_LOADER, null, MainActivity.this);
         });
 
@@ -63,6 +69,21 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
         if (prLog == PackageManager.PERMISSION_DENIED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_CALL_LOG}, URL_LOADER);
+
+        SharedPreferences sp = getSharedPreferences(MY_PREFS_NAME, Context.MODE_PRIVATE);
+        if (!sp.contains(MY_TOKEN)) login(sp);
+        
+    }
+
+    private void login(SharedPreferences sp) {
+        SharedPreferences.Editor editor = sp.edit();
+        editor.remove(MY_TOKEN);
+        
+        String bb_token ="";
+        String bb_user="";
+
+
+        editor.putString(MY_TOKEN, bb_token);
     }
 
     @Override
@@ -86,7 +107,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.N) // That's because the "sort predicates". If you take them out, you may take this as well
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor managedCursor) {
         Log.d(TAG, "onLoadFinished()");
@@ -142,6 +163,9 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
         sb.append("Total calls: "+callLog.size());
 
+        // REMOVE TO LIMIT VERSION CODES
+        // ---8<------8<------8<------8<------8<------8<------8<---
+
         Predicate<CallRecord> out = CallRecord -> Integer.parseInt(CallRecord.getCallType()) == CallLog.Calls.OUTGOING_TYPE ;
         Predicate<CallRecord> in = CallRecord -> Integer.parseInt(CallRecord.getCallType()) == CallLog.Calls.INCOMING_TYPE;
         Predicate<CallRecord> miss = CallRecord -> Integer.parseInt(CallRecord.getCallType()) == CallLog.Calls.MISSED_TYPE;
@@ -162,6 +186,8 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         sb.append("<BR>Total outbound: "+resultOut.size());
         sb.append("<BR>Total inbound: "+resultIn.size());
         sb.append("<BR>Total missed: "+resultMiss.size());
+
+        // ---8<------8<------8<------8<------8<------8<------8<---
 
         callLogsTextView.setText(Html.fromHtml(sb.toString()));
     }
